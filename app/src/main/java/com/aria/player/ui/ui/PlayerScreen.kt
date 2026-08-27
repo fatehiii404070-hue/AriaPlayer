@@ -10,18 +10,40 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun PlayerScreen(videoUri: Uri?) {
-    var showPicker by remember { mutableStateOf(videoUri == null) }
+    var selectedUri by remember { mutableStateOf(videoUri) }
 
-    if (showPicker) {
+    if (selectedUri == null) {
+        // اگر ویدیویی انتخاب نشده باشد، صفحه انتخاب فایل را نشان می‌دهد
         FilePickerScreen { uri ->
-            showPicker = false
+            selectedUri = uri
         }
     } else {
+        // وقتی ویدیو انتخاب شد، این بخش اجرا می‌شود (جایی که پلیر و کنترل‌ها قرار می‌گیرند)
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "ویدیو انتخاب شد - در حال پخش")
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "ویدیو با موفقیت انتخاب شد!",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = selectedUri.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = { selectedUri = null }) {
+                    Text("انتخاب ویدیوی دیگر")
+                }
+            }
         }
     }
 }
