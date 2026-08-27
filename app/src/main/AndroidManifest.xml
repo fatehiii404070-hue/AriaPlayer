@@ -8,7 +8,7 @@
     <application
         android:allowBackup="true"
         android:icon="@android:drawable/ic_media_play"
-        android:label="@string/app_name"
+        android:label="آریا پلیر"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoTitleBar.Fullscreen">
         
