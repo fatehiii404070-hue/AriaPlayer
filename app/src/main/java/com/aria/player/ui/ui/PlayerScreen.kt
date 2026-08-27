@@ -1,146 +1,89 @@
 package com.aria.player.ui
 
+import android.net.Uri
+import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aria.player.service.AudioPlayerManager
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun PlayerScreen(
-    songTitle: String,
+    videoUri: Uri?,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val playerManager = remember { AudioPlayerManager(context) }
-    var isPlaying by remember { mutableStateOf(false) }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            playerManager.release()
+    // ساخت موتور پخش ویدیو ExoPlayer
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            videoUri?.let {
+                setMediaItem(MediaItem.fromUri(it))
+                prepare()
+                playWhenReady = true // پخش خودکار فیلم (Autoplay)
+            }
         }
     }
 
-    Column(
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+            .background(Color.Black)
     ) {
-        // هدر صفحه پخش
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            TextButton(onClick = {
-                playerManager.pauseAudio()
-                onBack()
-            }) {
-                Text("← بازگشت", color = Color(0xFF1DB954), fontSize = 16.sp)
-            }
-        }
-
-        // کاور موزیک
-        Box(
+        // کامپوننت نمایش فیلم با قابلیت Touch and Hold برای توقف/ادامه
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true // نمایش کنترل‌های پیش‌فرض فیلم
+                }
+            },
             modifier = Modifier
-                .size(260.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xFF282828)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = "Cover",
-                tint = Color(0xFF1DB954),
-                modifier = Modifier.size(100.dp)
-            )
-        }
-
-        // اطلاعات موزیک
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = songTitle,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "آریا پلیر - سرویس پخش فعال",
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
-        }
-
-        // نوار پیشرفت
-        Slider(
-            value = 0.0f,
-            onValueChange = {},
-            colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF1DB954),
-                activeTrackColor = Color(0xFF1DB954),
-                inactiveTrackColor = Color(0xFF404040)
-            )
+                .fillMaxSize()
+                .pointerInteropFilter { event ->
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            // لمس و نگه داشتن انگشت -> متوقف شدن فیلم
+                            exoPlayer.pause()
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            // برداشتن انگشت از روی صفحه -> ادامه پخش فیلم
+                            exoPlayer.play()
+                            true
+                        }
+                        else -> false
+                    }
+                }
         )
 
-        // دکمه‌های کنترل پخش
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        // دکمه بازگشت بالای صفحه فیلم
+        Button(
+            onClick = onBack,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0x88000000)),
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart)
         ) {
-            IconButton(onClick = {}) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Prev", tint = Color.White, modifier = Modifier.size(36.dp))
-            }
-
-            FloatingActionButton(
-                onClick = {
-                    if (isPlaying) {
-                        playerManager.pauseAudio()
-                        isPlaying = false
-                    } else {
-                        playerManager.resumeAudio()
-                        isPlaying = true
-                    }
-                },
-                containerColor = Color(0xFF1DB954),
-                shape = CircleShape,
-                modifier = Modifier.size(70.dp)
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    tint = Color.White,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-
-            IconButton(onClick = {}) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(36.dp))
-            }
+            Text("← بازگشت", color = Color.White, fontSize = 14.sp)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
