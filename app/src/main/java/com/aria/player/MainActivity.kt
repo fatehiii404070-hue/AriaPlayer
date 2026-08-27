@@ -113,13 +113,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     "player" -> {
-                        PlayerScreen(onBack = { currentScreen = "home" })
+                        PlayerScreen(
+                            songTitle = selectedSongTitle,
+                            onBack = { currentScreen = "home" }
+                        )
                     }
                 }
             }
-        }
-    }
-}
         }
     }
 }
