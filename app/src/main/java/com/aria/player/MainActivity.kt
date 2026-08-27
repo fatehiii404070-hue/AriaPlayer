@@ -8,12 +8,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.aria.player.ui.FilePickerScreen
-import com.aria.player.ui.ReelsPlayerScreen
-import com.aria.player.ui.SettingsScreen
-import com.aria.player.ui.VideoItem
+import com.aria.player.ui.*
 
 enum class Screen {
+    HOME,
     FILE_PICKER,
     REELS_PLAYER,
     SETTINGS
@@ -34,13 +32,24 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    var currentScreen by remember { mutableStateOf(Screen.FILE_PICKER) }
+    var currentScreen by remember { mutableStateOf(Screen.HOME) }
     var currentVideoList by remember { mutableStateOf<List<VideoItem>>(emptyList()) }
 
     when (currentScreen) {
+        Screen.HOME -> {
+            HomeScreen(
+                onStartPlay = {
+                    currentScreen = Screen.FILE_PICKER
+                },
+                onOpenSettings = {
+                    currentScreen = Screen.SETTINGS
+                }
+            )
+        }
+
         Screen.FILE_PICKER -> {
             FilePickerScreen(
-                onBack = { /* در صفحه اول بازگشت نیازی نیست */ },
+                onBack = { currentScreen = Screen.HOME },
                 onVideoListReady = { videos ->
                     currentVideoList = videos
                     currentScreen = Screen.REELS_PLAYER
@@ -69,19 +78,19 @@ fun AppNavigation() {
 
         Screen.SETTINGS -> {
             val savedVideos = currentVideoList.filter { it.isSaved }
-            
+            val likedVideos = currentVideoList.filter { it.isLiked }
+
             SettingsScreen(
                 savedVideos = savedVideos,
-                onBack = {
-                    currentScreen = Screen.REELS_PLAYER
-                },
+                likedVideos = likedVideos,
+                onBack = { currentScreen = Screen.HOME },
                 onTitleUpdated = { targetVideo, newTitle ->
                     currentVideoList = currentVideoList.map { item ->
                         if (item.id == targetVideo.id) item.copy(title = newTitle) else item
                     }
                 },
-                onPlaySavedVideos = { savedList ->
-                    currentVideoList = savedList
+                onPlayVideos = { selectedList ->
+                    currentVideoList = selectedList
                     currentScreen = Screen.REELS_PLAYER
                 }
             )
