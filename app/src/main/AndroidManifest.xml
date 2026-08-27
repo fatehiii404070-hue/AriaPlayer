@@ -10,13 +10,13 @@
         android:icon="@android:drawable/ic_media_play"
         android:label="آریا پلیر"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.NoTitleBar.Fullscreen">
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:theme="@android:style/Theme.Material.NoTitleBar.Fullscreen">
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
