@@ -16,17 +16,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aria.player.service.AudioPlayerManager
 
 @Composable
 fun PlayerScreen(
     songTitle: String,
     onBack: () -> Unit
 ) {
-    var isPlaying by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val playerManager = remember { AudioPlayerManager(context) }
+    var isPlaying by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            playerManager.release()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -41,12 +51,15 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Start
         ) {
-            TextButton(onClick = onBack) {
+            TextButton(onClick = {
+                playerManager.pauseAudio()
+                onBack()
+            }) {
                 Text("← بازگشت", color = Color(0xFF1DB954), fontSize = 16.sp)
             }
         }
 
-        // کاور وسط صفحه
+        // کاور موزیک
         Box(
             modifier = Modifier
                 .size(260.dp)
@@ -62,7 +75,7 @@ fun PlayerScreen(
             )
         }
 
-        // اطلاعات موزیک انتخابی
+        // اطلاعات موزیک
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = songTitle,
@@ -74,7 +87,7 @@ fun PlayerScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "آریا پلیر - در حال پخش",
+                text = "آریا پلیر - سرویس پخش فعال",
                 color = Color.Gray,
                 fontSize = 14.sp
             )
@@ -82,7 +95,7 @@ fun PlayerScreen(
 
         // نوار پیشرفت
         Slider(
-            value = 0.2f,
+            value = 0.0f,
             onValueChange = {},
             colors = SliderDefaults.colors(
                 thumbColor = Color(0xFF1DB954),
@@ -91,7 +104,7 @@ fun PlayerScreen(
             )
         )
 
-        // دکمه‌های کنترل
+        // دکمه‌های کنترل پخش
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -102,7 +115,15 @@ fun PlayerScreen(
             }
 
             FloatingActionButton(
-                onClick = { isPlaying = !isPlaying },
+                onClick = {
+                    if (isPlaying) {
+                        playerManager.pauseAudio()
+                        isPlaying = false
+                    } else {
+                        playerManager.resumeAudio()
+                        isPlaying = true
+                    }
+                },
                 containerColor = Color(0xFF1DB954),
                 shape = CircleShape,
                 modifier = Modifier.size(70.dp)
