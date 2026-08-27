@@ -13,11 +13,9 @@ fun PlayerScreen(videoUri: Uri?) {
     var showPicker by remember { mutableStateOf(videoUri == null) }
 
     if (showPicker) {
-        FilePickerScreen(
-            onVideoSelected = { uri ->
-                showPicker = false
-            }
-        )
+        FilePickerScreen { uri ->
+            showPicker = false
+        }
     } else {
         Box(
             modifier = Modifier.fillMaxSize(),
