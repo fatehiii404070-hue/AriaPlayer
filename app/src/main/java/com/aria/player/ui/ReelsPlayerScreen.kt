@@ -1,13 +1,24 @@
 package com.aria.player.ui
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,11 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ReelsPlayerScreen(
     videoList: List<VideoItem>,
@@ -29,10 +43,26 @@ fun ReelsPlayerScreen(
 ) {
     if (videoList.isEmpty()) return
 
+    // ۱. درخواست مجوز دسترسی به ویدیوهای حافظه گوشی
+    val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_VIDEO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(storagePermission)
+    }
+
+    // ۲. کنترل اسکرول تیک‌تاکی (محدود به رد شدن دقیقاً ۱ فیلم در هر با کشیدن دست)
     val pagerState = rememberPagerState(pageCount = { videoList.size })
     val coroutineScope = rememberCoroutineScope()
 
-    // تایمر خودکار برای پخش فیلم بر اساس ثانیه‌های تعبیه‌شده در تنظیمات
+    // تایمر پخش خودکار (در صورت فعال بودن در تنظیمات)
     LaunchedEffect(pagerState.currentPage, AutoPlayManager.isAutoPlayEnabled) {
         if (AutoPlayManager.isAutoPlayEnabled) {
             delay(AutoPlayManager.durationPerVideoSeconds * 1000L)
@@ -42,7 +72,7 @@ fun ReelsPlayerScreen(
         }
     }
 
-    // لیسنر کنترل صوتی (میکروفون)
+    // لیسنر صوتی (کنترل با گفتار بالا/پایین)
     VoiceControlListener(
         onSwipeUp = {
             if (pagerState.currentPage < videoList.size - 1) {
@@ -63,84 +93,133 @@ fun ReelsPlayerScreen(
     ) {
         VerticalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            // محدود کردن رد شدن فیلم‌ها فقط به ۱ عدد حتی با دست زدن محکم
+            pagerSnapDistance = PagerSnapDistance.atMost(1)
         ) { page ->
             val video = videoList[page]
 
+            var isPaused by remember { mutableStateOf(false) }
+            var showLikeHeart by remember { mutableStateOf(false) }
+
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            // تک‌ضربه: استپ / پخش
+                            onTap = { isPaused = !isPaused },
+                            // لمس طولانی (۱ تا ۳ ثانیه): استپ هنگام نگه داشتن دست
+                            onPress = {
+                                tryAwaitRelease()
+                                isPaused = false
+                            },
+                            // دبل تپ: ثبت لایک و افزودن به پوشه لایک شده‌ها
+                            onDoubleTap = {
+                                if (!video.isLiked) {
+                                    onToggleLike(video)
+                                    showLikeHeart = true
+                                }
+                            }
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                // کادر لوکس پخش فیلم
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(0.92f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color(0xFF111111)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "در حال پخش: ${video.title}",
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
+                // نمایش متن وضعیت پخش ویدیو
+                Text(
+                    text = if (isPaused) "⏸ متوقف شد" else "▶ در حال پخش ویدیو",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
 
-                    // آیکون لوکس تنظیمات سفارشی‌شده در پایین کادر پخش فیلم
-                    Surface(
-                        onClick = onOpenSettings,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.Black.copy(alpha = 0.6f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "تنظیمات",
-                                tint = AppThemeManager.primaryColor,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = AppLanguageManager.getTranslation("تنظیمات", "Settings", "الإعدادات", "設定", "设置", "सेटिंग्स"),
-                                color = Color.White,
-                                fontSize = 11.sp
-                            )
-                        }
+                // انیمیشن قلب قرمز هنگام دبل تپ
+                AnimatedVisibility(
+                    visible = showLikeHeart,
+                    enter = scaleIn() + fadeIn(),
+                    exit = scaleOut() + fadeOut()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Like Animation",
+                        tint = Color.Red,
+                        modifier = Modifier.size(100.dp)
+                    )
+                    LaunchedEffect(Unit) {
+                        delay(800)
+                        showLikeHeart = false
                     }
                 }
 
-                // دکمه‌های اکشن در سمت راست (لایک و سیو)
+                // بخش پایین سمت راست: آیکون سینمایی، نام فیلم چسبیده و آیکون سیو بالایی
                 Column(
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 40.dp, end = 20.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    IconButton(onClick = { onToggleLike(video) }) {
+                    // آیکون سیو (بالای آیکون فیلم سینمایی)
+                    IconButton(
+                        onClick = { onToggleSave(video) },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape)
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "لایک",
-                            tint = if (video.isLiked) Color.Red else Color.White
+                            imageVector = Icons.Default.Bookmark,
+                            contentDescription = "ذخیره فیلم",
+                            // تغییر رنگ از سبز (سیو شده) به عادی و بالعکس
+                            tint = if (video.isSaved) Color(0xFF00FF00) else Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
-                    IconButton(onClick = { onToggleSave(video) }) {
+                    // ترکیب آیکون سینمایی ثابت و نام فیلم چسبیده به آن در سمت چپ
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(16.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        // اسم فیلم در سمت چپ (بزرگ، بولد و صاف)
+                        Text(
+                            text = video.title,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+
+                        // آیکون سینمایی ثابت (در پایین سمت راست)
                         Icon(
-                            imageVector = Icons.Default.Bookmark,
-                            contentDescription = "سیو",
-                            tint = if (video.isSaved) AppThemeManager.primaryColor else Color.White
+                            imageVector = Icons.Default.Movie,
+                            contentDescription = "Movie Icon",
+                            tint = AppThemeManager.primaryColor,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
+                }
+
+                // آیکون دکمه تنظیمات لوکس در بالای صفحه
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "تنظیمات",
+                        tint = Color.White
+                    )
                 }
             }
         }
 
-        // دایره چشمک‌زن سبز کنترل صوتی
+        // دایره سبز چشمک‌زن حالت صوتی در پایین صفحه
         GlowingVoiceIndicator()
     }
 }
