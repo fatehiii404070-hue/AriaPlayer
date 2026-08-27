@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
@@ -12,8 +13,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -28,7 +32,17 @@ fun ReelsPlayerScreen(
     val pagerState = rememberPagerState(pageCount = { videoList.size })
     val coroutineScope = rememberCoroutineScope()
 
-    // اتصال کنترل صوتی جهت بالا و پایین کردن ویدیوها
+    // تایمر خودکار برای پخش فیلم بر اساس ثانیه‌های تعبیه‌شده در تنظیمات
+    LaunchedEffect(pagerState.currentPage, AutoPlayManager.isAutoPlayEnabled) {
+        if (AutoPlayManager.isAutoPlayEnabled) {
+            delay(AutoPlayManager.durationPerVideoSeconds * 1000L)
+            if (pagerState.currentPage < videoList.size - 1) {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
+    }
+
+    // لیسنر کنترل صوتی (میکروفون)
     VoiceControlListener(
         onSwipeUp = {
             if (pagerState.currentPage < videoList.size - 1) {
@@ -57,17 +71,54 @@ fun ReelsPlayerScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                // نمایش عنوان ویدیو در صفحه پخش
-                Text(
-                    text = "در حال پخش: ${video.title}",
-                    color = Color.White
-                )
+                // کادر لوکس پخش فیلم
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(0.92f)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFF111111)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "در حال پخش: ${video.title}",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
 
-                // دکمه‌های لایک و سیو در سمت راست
+                    // آیکون لوکس تنظیمات سفارشی‌شده در پایین کادر پخش فیلم
+                    Surface(
+                        onClick = onOpenSettings,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Black.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "تنظیمات",
+                                tint = AppThemeManager.primaryColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = AppLanguageManager.getTranslation("تنظیمات", "Settings", "الإعدادات", "設定", "设置", "सेटिंग्स"),
+                                color = Color.White,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                // دکمه‌های اکشن در سمت راست (لایک و سیو)
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(16.dp),
+                        .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     IconButton(onClick = { onToggleLike(video) }) {
@@ -89,18 +140,7 @@ fun ReelsPlayerScreen(
             }
         }
 
-        // آیکون تنظیمات در بالای صفحه
-        IconButton(
-            onClick = onOpenSettings,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(imageVector = Icons.Default.Settings, contentDescription = "تنظیمات", tint = Color.White)
-        }
-
-        // نقطه سبز رنگ چشمک‌زن صوتی در پایین صفحه
+        // دایره چشمک‌زن سبز کنترل صوتی
         GlowingVoiceIndicator()
     }
 }
-
