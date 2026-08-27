@@ -17,12 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun PlayerScreen(onBack: () -> Unit) {
-    var isPlaying by remember { mutableStateOf(false) }
+fun PlayerScreen(
+    songTitle: String,
+    onBack: () -> Unit
+) {
+    var isPlaying by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -42,7 +46,7 @@ fun PlayerScreen(onBack: () -> Unit) {
             }
         }
 
-        // کاور وسط صفحه (جلوه لوکس سه‌بعدی و موزیک پلیر)
+        // کاور وسط صفحه
         Box(
             modifier = Modifier
                 .size(260.dp)
@@ -58,25 +62,27 @@ fun PlayerScreen(onBack: () -> Unit) {
             )
         }
 
-        // اطلاعات موزیک
+        // اطلاعات موزیک انتخابی
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "عنوان موزیک (در حال پخش)",
+                text = songTitle,
                 color = Color.White,
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "آریا پلیر - فایل‌های صوتی و نی‌نوازی",
+                text = "آریا پلیر - در حال پخش",
                 color = Color.Gray,
                 fontSize = 14.sp
             )
         }
 
-        // نوار پیشرفت (Slider)
+        // نوار پیشرفت
         Slider(
-            value = 0.3f,
+            value = 0.2f,
             onValueChange = {},
             colors = SliderDefaults.colors(
                 thumbColor = Color(0xFF1DB954),
@@ -85,7 +91,7 @@ fun PlayerScreen(onBack: () -> Unit) {
             )
         )
 
-        // دکمه‌های کنترل پخش (پلی، پاز، بعدی و قبلی)
+        // دکمه‌های کنترل
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -117,4 +123,3 @@ fun PlayerScreen(onBack: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
-
