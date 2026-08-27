@@ -9,21 +9,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SettingsScreen() {
-    var isDarkMode by remember { mutableStateOf(true) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        Text(text = "تنظیمات برنامه", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "حالت شب")
-            Spacer(modifier = Modifier.width(8.dp))
-            Switch(checked = isDarkMode, onCheckedChange = { isDarkMode = it })
-        }
+        Text(text = "تنظیمات اپلیکیشن")
     }
 }
